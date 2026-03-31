@@ -1,6 +1,4 @@
 import streamlit as st
-import requests
-import re
 import os
 from pydub import AudioSegment
 from io import BytesIO
@@ -11,23 +9,39 @@ st.set_page_config(page_title="爸爸的音樂神器", page_icon="🎵", layout=
 st.markdown("""
     <style>
     .big-font { font-size:26px !important; font-weight: bold; color: #1E88E5; }
-    .stButton>button { height: 3.5em; font-size: 22px !important; border-radius: 15px; background-color: #FF4B4B; color: white; }
+    .guide-text { font-size:20px !important; color: #555; line-height: 1.6; }
+    .stButton>button { height: 3.5em; font-size: 22px !important; border-radius: 15px; }
+    .link-button { 
+        display: inline-block; 
+        padding: 20px 40px; 
+        font-size: 24px; 
+        cursor: pointer; 
+        text-align: center; 
+        text-decoration: none; 
+        outline: none; 
+        color: #fff; 
+        background-color: #FF0000; 
+        border: none; 
+        border-radius: 15px; 
+        width: 100%;
+        font-weight: bold;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 功能選單 ---
+# --- 左側功能選單 ---
 with st.sidebar:
     st.markdown("### 🛠️ 功能切換")
-    # 這裡的文字必須跟下面的 if/elif 完全一樣
-    mode = st.radio("請選擇：", ["🔄 本地音檔轉MP3", "📺 抓YT轉MP3"])
+    mode = st.radio("請選擇任務：", ["🔄 1. 音檔轉MP3 (處理Line傳來的檔案)", "📺 2. 抓YT轉MP3 (穩定下載區)"])
     st.markdown("---")
-    st.info("💡 提示：YT 抓取會直接幫您轉成 MP3。")
+    st.info("💡 下載完記得把檔案搬到隨身碟，再跑『一鍵排序』喔！")
 
-# --- 功能 1：音檔轉 MP3 ---
-if mode == "🔄 本地音檔轉MP3":
+# --- 功能 1：音檔轉 MP3 (維持運作) ---
+if mode == "🔄 1. 音檔轉MP3 (處理Line傳來的檔案)":
     st.markdown("<h1 style='color: #FF4B4B;'>🔄 音檔轉MP3</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='big-font'>第一步：點按鈕選取檔案</p>", unsafe_allow_html=True)
-    uploaded_files = st.file_uploader("上傳", type=["wav", "aac", "m4a"], accept_multiple_files=True, label_visibility="collapsed")
+    st.markdown("<p class='guide-text'>適合處理從 Line 存下來的音樂，把它們變成車上能聽的格式。</p>", unsafe_allow_html=True)
+    
+    uploaded_files = st.file_uploader("點下面選取檔案：", type=["wav", "aac", "m4a"], accept_multiple_files=True)
     
     if uploaded_files:
         if st.button("🚀 開始轉檔", use_container_width=True):
@@ -42,50 +56,27 @@ if mode == "🔄 本地音檔轉MP3":
                 except:
                     st.error(f"❌ {file.name} 轉檔失敗")
 
-# --- 功能 2：YouTube 轉 MP3 ---
-elif mode == "📺 抓YT轉MP3":
-    st.markdown("<h1 style='color: #FF0000;'>📺 抓YT轉MP3</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='big-font'>第一步：請貼上 YouTube 網址</p>", unsafe_allow_html=True)
+# --- 功能 2：YouTube 下載導航 (改為穩定直連模式) ---
+elif mode == "📺 2. 抓YT轉MP3 (穩定下載區)":
+    st.markdown("<h1 style='color: #FF0000;'>📺 抓取 YouTube 音樂</h1>", unsafe_allow_html=True)
     
-    yt_url = st.text_input("在此處按右鍵貼上網址：", placeholder="https://www.youtube.com/watch?v=...")
+    st.markdown("""
+    <div style="background-color: #fff3f3; padding: 20px; border-radius: 15px; border-left: 5px solid #FF0000;">
+        <p class="big-font">爸爸，這套方法最穩定、絕對不失敗：</p>
+        <p class="guide-text">
+            1. 點擊下方<b>「紅色大按鈕」</b>開啟工具網頁。<br>
+            2. 把 YouTube 網址<b>「貼上」</b>到那個網頁的框框。<br>
+            3. 按下網頁上的<b>「藍色箭頭」</b>或 <b>Download</b> 就能存到電腦了！
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    if yt_url:
-        st.markdown("---")
-        if st.button("🚀 抓取 MP3", type="primary", use_container_width=True):
-            status = st.empty()
-            status.warning("⏳ 正在連線到最新轉檔伺服器，請稍候...")
-
-            # Cobalt 最新 API 設定
-            api_url = "https://api.cobalt.tools/" 
-            headers = {
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "url": yt_url,
-                "downloadMode": "audio",
-                "audioFormat": "mp3",
-                "audioBitrate": "128"
-            }
-
-            try:
-                response = requests.post(api_url, json=payload, headers=headers, timeout=30)
-                result = response.json()
-
-                if result.get("status") == "stream":
-                    download_url = result.get("url")
-                    file_res = requests.get(download_url, stream=True)
-                    
-                    status.success("🎉 抓取成功！")
-                    st.download_button(
-                        label="📥 下載 MP3 到電腦",
-                        data=file_res.content,
-                        file_name="youtube_music.mp3",
-                        mime="audio/mpeg",
-                        use_container_width=True
-                    )
-                    st.balloons()
-                else:
-                    status.error(f"❌ 伺服器忙碌：{result.get('text', '暫時無法抓取，請換一首歌試試')}")
-            except Exception as e:
-                status.error("❌ 連線超時，請點擊按鈕重試。")
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # 這裡做一個巨大的連結按鈕
+    st.markdown('<a href="https://cobalt.tools/" target="_blank" class="link-button">🚀 點我開啟：YouTube 下載工具 (Cobalt)</a>', unsafe_allow_html=True)
+    
+    st.markdown("<br><hr>", unsafe_allow_html=True)
+    st.markdown("<p class='guide-text'><b>💡 小撇步：</b></p>", unsafe_allow_html=True)
+    st.markdown("- 進去工具網頁後，畫面很乾淨，沒有廣告，請放心操作。")
+    st.markdown("- 下載完後，記得再用回桌面那個「一鍵傳送」把檔案送進隨身碟喔！")
