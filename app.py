@@ -19,7 +19,8 @@ st.markdown("""
 with st.sidebar:
     st.markdown("### 🛠️ 功能切換")
     mode = st.radio("請選擇：", ["🔄 本地音檔轉MP3", "📺 抓YT轉MP3"])
-    st.info("💡 轉換完成後，請點擊下載按鈕儲存到電腦。")
+    st.markdown("---")
+    st.info("💡 提示：YT 抓取會直接幫您轉成 MP3。")
 
 # --- 功能 1：音檔轉 MP3 ---
 if mode == "🔄 本地音檔轉MP3":
@@ -36,41 +37,44 @@ if mode == "🔄 本地音檔轉MP3":
                     new_name = os.path.splitext(file.name)[0] + ".mp3"
                     st.success(f"✅ 完成: {new_name}")
                     st.download_button(label=f"📥 下載 {new_name}", data=mp3_data.getvalue(), file_name=new_name, mime="audio/mpeg", key=f"au_{i}", use_container_width=True)
-                except Exception as e:
+                except:
                     st.error(f"❌ {file.name} 轉檔失敗")
 
-# --- 功能 2：YouTube 轉 MP3 (串接 Cobalt API 穩定版) ---
-elif mode == "📺 抓YT轉MP3":
+# --- 功能 2：YouTube 轉 MP3 (更新至 Cobalt 最新 API) ---
+elif mode == "📺 2. 抓YT轉MP3":
     st.markdown("<h1 style='color: #FF0000;'>📺 抓YT轉MP3</h1>", unsafe_allow_html=True)
     yt_url = st.text_input("請貼上 YouTube 網址：", placeholder="https://www.youtube.com/watch?v=...")
     
     if yt_url:
         if st.button("🚀 抓取 MP3", type="primary", use_container_width=True):
             status = st.empty()
-            status.warning("⏳ 正在連線到轉檔伺服器，請稍候約 15-30 秒...")
+            status.warning("⏳ 正在連線到最新轉檔伺服器...")
 
-            # 串接 Cobalt API
-            api_url = "https://api.cobalt.tools/api/json"
-            headers = {"Accept": "application/json", "Content-Type": "application/json"}
+            # --- 關鍵修正：最新 API 網址與設定 ---
+            api_url = "https://api.cobalt.tools/" 
+            headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            }
             payload = {
                 "url": yt_url,
                 "downloadMode": "audio",
                 "audioFormat": "mp3",
-                "audioBitrate": "128" # 稍微降低一點以增加成功率
+                "audioBitrate": "128" # 確保穩定度
             }
 
             try:
-                # 增加 timeout 防止網頁無限期轉圈圈
-                response = requests.post(api_url, json=payload, headers=headers, timeout=60)
+                response = requests.post(api_url, json=payload, headers=headers, timeout=30)
                 result = response.json()
 
-                if result.get("status") in ["stream", "picker"]:
+                # Cobalt v10 的回傳邏輯
+                if result.get("status") == "stream":
                     download_url = result.get("url")
-                    file_res = requests.get(download_url, timeout=60)
+                    file_res = requests.get(download_url, stream=True)
                     
-                    status.success("🎉 抓取成功！請點擊下方按鈕下載。")
+                    status.success("🎉 抓取成功！")
                     st.download_button(
-                        label="📥 點我下載 MP3 檔案",
+                        label="📥 下載 MP3 到電腦",
                         data=file_res.content,
                         file_name="youtube_music.mp3",
                         mime="audio/mpeg",
@@ -78,6 +82,6 @@ elif mode == "📺 抓YT轉MP3":
                     )
                     st.balloons()
                 else:
-                    status.error(f"❌ 伺服器回應：{result.get('text', '暫時無法下載此影片')}")
+                    status.error(f"❌ 伺服器忙碌：{result.get('text', '請稍後再試')}")
             except Exception as e:
-                status.error("❌ 連線超時或伺服器忙碌中，請再點一次按鈕試試。")
+                status.error("❌ 連線超時，請重新點擊按鈕。")
