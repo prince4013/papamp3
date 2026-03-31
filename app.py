@@ -6,116 +6,56 @@ from io import BytesIO
 from pydub import AudioSegment
 import yt_dlp
 
-# --- 介面設定 ---
 st.set_page_config(page_title="爸爸的音樂神器", page_icon="🎵", layout="centered")
 
-st.markdown("""
-    <style>
-    .big-font { font-size:24px !important; font-weight: bold; }
-    .stButton>button { height: 3.5em; font-size: 22px !important; border-radius: 15px; }
-    </style>
-    """, unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #FF0000;'>📺 抓YT轉MP3 (強化版)</h1>", unsafe_allow_html=True)
 
-# --- 左側功能選單 ---
-with st.sidebar:
-    st.markdown("<h1 style='font-size: 28px;'>🎵 功能選單</h1>", unsafe_allow_html=True)
-    mode = st.radio("請選擇任務：", ["🔄 1. 音檔轉MP3", "📺 2. 抓YT轉MP3"])
-    st.markdown("---")
-    if os.path.exists("cookies.txt"):
-        st.success("✅ 已偵測到通行證 (Cookies)")
-    else:
-        st.info("💡 提示：若抓取失敗，建議加入 cookies.txt")
+yt_url = st.text_input("請在此處貼上 YouTube 網址：", placeholder="https://www.youtube.com/watch?v=...")
 
-# --- 功能 1：本地音檔轉 MP3 ---
-if mode == "🔄 1. 音檔轉MP3":
-    st.markdown("<h1 style='color: #FF4B4B;'>🔄 音檔轉MP3</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='big-font'>第一步：點按鈕選取檔案 (WAV/AAC)</p>", unsafe_allow_html=True)
-    uploaded_files = st.file_uploader("上傳", type=["wav", "aac", "m4a"], accept_multiple_files=True, label_visibility="collapsed")
-    
-    if uploaded_files:
-        if st.button("🚀 開始轉檔", type="primary", use_container_width=True):
-            bar = st.progress(0)
-            for i, file in enumerate(uploaded_files):
-                try:
-                    audio = AudioSegment.from_file(file)
-                    mp3_data = BytesIO()
-                    audio.export(mp3_data, format="mp3", bitrate="128k") # 稍微調低音質加快速度
-                    new_name = os.path.splitext(file.name)[0] + ".mp3"
-                    st.success(f"✅ 已完成: {new_name}")
-                    st.download_button(label=f"📥 下載 {new_name}", data=mp3_data.getvalue(), file_name=new_name, mime="audio/mpeg", key=f"au_{i}", use_container_width=True)
-                    bar.progress((i + 1) / len(uploaded_files))
-                except:
-                    st.error(f"❌ {file.name} 轉換失敗")
-            st.balloons()
+if yt_url:
+    if st.button("🚀 開始抓取並轉成 MP3", type="primary", use_container_width=True):
+        # 1. 強力清洗網址 (只留下最核心的影片 ID)
+        match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11})", yt_url)
+        if match:
+            video_id = match.group(1)
+            clean_url = f"https://www.youtube.com/watch?v={video_id}"
+        else:
+            clean_url = yt_url
 
-# --- 功能 2：YouTube 轉 MP3 (最速通吃版) ---
-elif mode == "📺 2. 抓YT轉MP3":
-    st.markdown("<h1 style='color: #FF0000;'>📺 抓YT轉MP3</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='big-font'>第一步：請貼上 YouTube 網址</p>", unsafe_allow_html=True)
-    
-    yt_url = st.text_input("網址：", placeholder="https://www.youtube.com/watch?v=...")
-    
-    if yt_url:
-        st.markdown("---")
-        if st.button("🚀 開始抓取並轉成 MP3", type="primary", use_container_width=True):
-            # 1. 網址深度淨化：處理短網址與各種參數
-            yt_url = yt_url.split("&")[0].split("?")[0] if "youtu.be" in yt_url else yt_url.split("&")[0]
+        unique_id = str(int(time.time()))
+        temp_fn = f"yt_audio_{unique_id}"
+        status = st.empty()
+        status.warning("⏳ 正在嘗試突破 YouTube 封鎖並下載中...")
 
-            unique_id = str(int(time.time()))
-            temp_fn = f"yt_audio_{unique_id}"
-            
-            status = st.empty()
-            status.warning("⏳ 正在下載中，請耐心等候...")
-            
-            # 2. 核心設定：使用「最相容模式」
-            ydl_opts = {
-                'format': 'best/bestaudio', # 👈 抓取任何可用的最佳資源（不限音訊）
-                'outtmpl': f"{temp_fn}.%(ext)s",
-                'noplaylist': True,
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '128', # 👈 使用 128k，雖然較低但相容性最高
-                }],
-                'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'quiet': True,
-                'no_warnings': True,
-                'nocheckcertificate': True,
-                'ignoreerrors': True,
-            }
-            
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(yt_url, download=True)
-                    if not info:
-                        st.error("❌ 無法取得影片資訊，請確認網址是否有效。")
-                    else:
-                        title = info.get('title', 'youtube_music')
-                        clean_title = re.sub(r'[\\/*?:"<>|]', "", title)
-                        
-                        mp3_path = f"{temp_fn}.mp3"
-                        # 檢查檔案是否存在 (有時候會因為副檔名問題導致路徑不同)
-                        if os.path.exists(mp3_path):
-                            with open(mp3_path, "rb") as f:
-                                mp3_bytes = f.read()
-                            
-                            status.success(f"🎉 成功抓取：{clean_title}")
-                            st.download_button(
-                                label=f"📥 點我下載 MP3：{clean_title}",
-                                data=mp3_bytes,
-                                file_name=f"{clean_title}.mp3",
-                                mime="audio/mpeg",
-                                use_container_width=True
-                            )
-                            st.balloons()
-                            os.remove(mp3_path)
-                        else:
-                            status.error("❌ 轉檔失敗。這通常是伺服器暫時性卡頓，請再點一次按鈕。")
-                        
-            except Exception as e:
-                status.error(f"❌ 抓取失敗。這可能是 YouTube 封鎖了伺服器。")
-                st.info("💡 如果一直失敗，建議先用手機下載影片，再用功能 1 轉成 MP3。")
+        ydl_opts = {
+            'format': 'ba/b',
+            'outtmpl': f"{temp_fn}.%(ext)s",
+            'noplaylist': True,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '128',
+            }],
+            # 💡 關鍵：強制使用 IPv4 並模擬真實瀏覽器行為
+            'source_address': '0.0.0.0', 
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
+            'quiet': True,
+        }
 
-st.markdown("---")
-st.caption("💡 下載完後請執行桌面的『一鍵傳送並排序』喔！")
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(clean_url, download=True)
+                title = info.get('title', 'youtube_music')
+                clean_title = re.sub(r'[\\/*?:"<>|]', "", title)
+                
+                mp3_path = f"{temp_fn}.mp3"
+                if os.path.exists(mp3_path):
+                    with open(mp3_path, "rb") as f:
+                        mp3_bytes = f.read()
+                    status.success(f"🎉 成功抓取：{clean_title}")
+                    st.download_button(label=f"📥 點我下載 MP3：{clean_title}", data=mp3_bytes, file_name=f"{clean_title}.mp3", mime="audio/mpeg", use_container_width=True)
+                    os.remove(mp3_path)
+        except Exception as e:
+            status.error("❌ 雲端伺服器遭封鎖。")
+            st.info("💡 建議：請將 cookies.txt 上傳至 GitHub，或使用下方的『電腦本地一鍵抓取』。")
