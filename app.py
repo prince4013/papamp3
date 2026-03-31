@@ -24,7 +24,7 @@ with st.sidebar:
     if os.path.exists("cookies.txt"):
         st.success("✅ 已偵測到通行證 (Cookies)")
     else:
-        st.warning("⚠️ 未偵測到通行證，YT 抓取可能失敗")
+        st.info("💡 提示：若抓取失敗，請考慮加入 cookies.txt")
 
 # --- 功能 1：本地音檔轉 MP3 ---
 if mode == "🔄 1. 音檔轉MP3":
@@ -48,7 +48,7 @@ if mode == "🔄 1. 音檔轉MP3":
                     st.error(f"❌ {file.name} 轉換失敗")
             st.balloons()
 
-# --- 功能 2：YouTube 轉 MP3 (通行證加強版) ---
+# --- 功能 2：YouTube 轉 MP3 (相容性最強版) ---
 elif mode == "📺 2. 抓YT轉MP3":
     st.markdown("<h1 style='color: #FF0000;'>📺 抓YT轉MP3</h1>", unsafe_allow_html=True)
     st.markdown("<p class='big-font'>第一步：請貼上 YouTube 網址</p>", unsafe_allow_html=True)
@@ -58,14 +58,21 @@ elif mode == "📺 2. 抓YT轉MP3":
     if yt_url:
         st.markdown("---")
         if st.button("🚀 開始抓取並轉成 MP3", type="primary", use_container_width=True):
+            # 1. 自動清理網址：只留下影片 ID，去掉播放清單參數
+            if "&list=" in yt_url:
+                yt_url = yt_url.split("&list=")[0]
+            if "?si=" in yt_url:
+                yt_url = yt_url.split("?si=")[0]
+
             unique_id = str(int(time.time()))
             temp_fn = f"yt_audio_{unique_id}"
             
             status = st.empty()
             status.warning("⏳ 正在下載中，請耐心等候（約 30-60 秒）...")
             
+            # 2. 放寬格式限制，改用 m4a/mp4 再轉 mp3
             ydl_opts = {
-                'format': 'bestaudio/best',
+                'format': 'ba/b', # 👈 改成抓取「任何音訊 (ba)」或「任何影片 (b)」
                 'outtmpl': f"{temp_fn}.%(ext)s",
                 'noplaylist': True,
                 'postprocessors': [{
@@ -73,11 +80,9 @@ elif mode == "📺 2. 抓YT轉MP3":
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
                 }],
-                # 自動判斷是否有 cookie 檔案
                 'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
                 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'quiet': True,
-                'no_warnings': True,
             }
             
             try:
@@ -102,14 +107,10 @@ elif mode == "📺 2. 抓YT轉MP3":
                         st.balloons()
                         os.remove(mp3_path)
                     else:
-                        status.error("❌ 下載完成但檔案轉化失敗。")
+                        status.error("❌ 格式轉換失敗，請換一個影片試試。")
                         
             except Exception as e:
-                err_msg = str(e)
-                if "403" in err_msg:
-                    status.error("❌ YouTube 封鎖了雲端伺服器 IP (Error 403)。請確認已將 cookies.txt 上傳至 GitHub。")
-                else:
-                    status.error(f"❌ 抓取失敗。原因：{err_msg[:100]}...")
+                status.error(f"❌ 抓取失敗。原因：{str(e)[:100]}...")
 
 st.markdown("---")
 st.caption("💡 下載完後請執行桌面的『一鍵傳送並排序』！")
