@@ -33,13 +33,13 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 頂部標題 ---
-st.markdown("<h1 style='text-align: center;'>👨‍🦳 爸爸的音樂神器</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>🚀 爸爸的音樂神器</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ==========================================
 # 第一區：YouTube 抓歌區 (穩定跳轉模式)
 # ==========================================
-st.markdown("<div class='section-title' style='color: #FF0000;'>📺 第一步：從 YouTube 抓歌</div>", unsafe_allow_html=True)
+st.markdown("<div class='section-title' style='color: #FF0000;'>第一種 📺 從 YouTube 抓歌</div>", unsafe_allow_html=True)
 
 st.markdown("""
 <div class="guide-box">
@@ -61,7 +61,7 @@ st.markdown("---")
 # ==========================================
 # 第二區：Line 音檔轉檔區 (本地轉檔模式)
 # ==========================================
-st.markdown("<div class='section-title' style='color: #FF4B4B;'>🔄 第二步：Line 音檔轉 MP3</div>", unsafe_allow_html=True)
+st.markdown("<div class='section-title' style='color: #FF4B4B;'>🔄 第二種：Line 音檔轉 MP3</div>", unsafe_allow_html=True)
 st.markdown("<p class='guide-text'>如果是從 Line 存下來的音樂 (WAV/AAC)，請在下面轉換：</p>", unsafe_allow_html=True)
 
 uploaded_files = st.file_uploader("點按鈕選取電腦裡的檔案：", type=["wav", "aac", "m4a"], accept_multiple_files=True, label_visibility="collapsed")
